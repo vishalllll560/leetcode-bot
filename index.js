@@ -1,11 +1,11 @@
+import express from 'express';
 import puppeteer from 'puppeteer';
 
-export default async function handler(req, res) {
-  const { username, password, code, lang, slug } = req.body;
+const app = express();
+app.use(express.json());
 
-  if (!username || !password || !code || !slug) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+app.post('/submit', async (req, res) => {
+  const { username, password, code, lang, slug } = req.body;
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -28,21 +28,23 @@ export default async function handler(req, res) {
     await page.waitForSelector('.monaco-editor');
 
     await page.evaluate((codeText) => {
-      const editor = document.querySelector('.monaco-editor');
-      const textarea = editor.querySelector('textarea');
+      const textarea = document.querySelector('.monaco-editor textarea');
       textarea.value = codeText;
       textarea.dispatchEvent(new Event('input'));
     }, code);
 
     await page.click('button:has-text("Submit")');
 
-    await page.waitForSelector('.status-column'); // or adjust accordingly
+    await page.waitForSelector('.status-column');
 
     await browser.close();
 
-    return res.json({ success: true, message: 'Submitted successfully!' });
+    res.json({ success: true });
   } catch (err) {
     await browser.close();
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
-}
+});
+
+app.listen(3000, () => console.log('Server running on port 3000'));
+
